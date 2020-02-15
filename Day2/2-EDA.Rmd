@@ -2,6 +2,39 @@
 title: "R Notebook"
 output: html_notebook
 ---
+```{r}
+library(tidyverse)
+library(ggridges)
+```
+# Visualizing new features
 
-Add heshanis code to this
+```{r}
+train_df <- read.csv("../credit_card_default_train.csv")
+train_df$NEXT_MONTH_DEFAULT <- as.factor(train_df$NEXT_MONTH_DEFAULT)
+train_df$PAY_JULY <- factor(train_df$PAY_JULY,levels=as.character(seq(-2,9)))
+train_df$PAY_AUG <- factor(train_df$PAY_AUG,levels=as.character(seq(-2,9)))
+train_df$PAY_SEP <- factor(train_df$PAY_SEP,levels=as.character(seq(-2,9)))
+train_df$PAY_OCT <- factor(train_df$PAY_OCT,levels=as.character(seq(-2,9)))
+train_df$PAY_NOV <- factor(train_df$PAY_NOV,levels=as.character(seq(-2,9)))
+train_df$PAY_DEC <- factor(train_df$PAY_DEC,levels=as.character(seq(-2,9)))
+test_df <- read.csv("../credit_card_default_test.csv")
+```
 
+Cosnidering the pay delay and paid amounts for the six months
+
+```{r}
+ggplot(data=train_df%>%
+         gather(pay_key,pay_value,c("PAY_JULY","PAY_AUG",
+                                        "PAY_SEP","PAY_OCT",
+                                        "PAY_NOV","PAY_DEC")) %>%
+         gather(paid_key,paid_value,c("PAID_AMT_JULY","PAID_AMT_AUG",
+                                      "PAID_AMT_SEP","PAID_AMT_OCT",
+                                      "PAID_AMT_NOV","PAID_AMT_DEC")) %>%
+         mutate(pay_key = factor(pay_key,levels=c("PAY_JULY","PAY_AUG",
+                                        "PAY_SEP","PAY_OCT",
+                                        "PAY_NOV","PAY_DEC"))),
+       aes(y=paid_value,x=pay_value,fill=NEXT_MONTH_DEFAULT))+
+  # geom_line(aes(color=NEXT_MONTH_DEFAULT))+
+  geom_bar(position="dodge", stat="identity")+
+  facet_grid(pay_key ~ .) + theme_minimal()
+```

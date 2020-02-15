@@ -6,6 +6,7 @@ output: html_notebook
 ## Libraries
 ```{r}
 library(tidyverse)
+library(gmodels)
 ```
 
 ## Loading Data and Summaries
@@ -31,7 +32,10 @@ print(summary(df))
 ```{r}
 ggplot(data=gather(train_df,key,value,c("DUE_AMT_JULY","DUE_AMT_AUG",
                                         "DUE_AMT_SEP","DUE_AMT_OCT",
-                                        "DUE_AMT_NOV","DUE_AMT_DEC")),
+                                        "DUE_AMT_NOV","DUE_AMT_DEC")) %>% 
+         mutate(key = factor(key,levels=c("DUE_AMT_JULY","DUE_AMT_AUG",
+                                        "DUE_AMT_SEP","DUE_AMT_OCT",
+                                        "DUE_AMT_NOV","DUE_AMT_DEC"))),
        aes(x = key,y = value))+
   geom_violin()
 ```
@@ -39,7 +43,10 @@ ggplot(data=gather(train_df,key,value,c("DUE_AMT_JULY","DUE_AMT_AUG",
 ```{r}
 ggplot(data=gather(train_df,key,value,c("PAID_AMT_JULY","PAID_AMT_AUG",
                                       "PAID_AMT_SEP","PAID_AMT_OCT",
-                                      "PAID_AMT_NOV","PAID_AMT_DEC")),
+                                      "PAID_AMT_NOV","PAID_AMT_DEC")) %>%
+         mutate(key = factor(key,levels=c("PAID_AMT_JULY","PAID_AMT_AUG",
+                                      "PAID_AMT_SEP","PAID_AMT_OCT",
+                                      "PAID_AMT_NOV","PAID_AMT_DEC"))),
        aes(x = key,y = value))+
   geom_violin()
 ```
@@ -47,15 +54,80 @@ ggplot(data=gather(train_df,key,value,c("PAID_AMT_JULY","PAID_AMT_AUG",
 ## Patterns of response variable
 
 
-
+We were initially going to look into the behaviours of clients through out the 6 months with regards to their delays. But there are too many observations to see a pattern
 ```{r}
 ggplot(data=gather(train_df,key,value,c("PAY_JULY","PAY_AUG",
                                         "PAY_SEP","PAY_OCT",
                                         "PAY_NOV","PAY_DEC")) %>%
-         mutate(key = as.factor(key), value=as.factor(value)),
+         mutate(key = factor(key,levels =c("PAY_JULY","PAY_AUG",
+                                        "PAY_SEP","PAY_OCT",
+                                        "PAY_NOV","PAY_DEC")), value=as.factor(value)),
        aes(x=key,y=value,group=Client_ID))+
-  geom_line(aes(color=NEXT_MONTH_DEFAULT),size=0.1)+
-  geom_point(aes(color=NEXT_MONTH_DEFAULT),size=0.1)+
-  scale_y_discrete(labels=as.character(seq(-2,9)))
+  geom_line(aes(color=NEXT_MONTH_DEFAULT),size=0.5)+
+  scale_y_discrete(labels=as.character(seq(-2,9)))+
+  theme_minimal()
+```
+Cross tabulation of Balance Limit with response variable
+```{r}
+blv <- train_df%>% 
+  mutate(Balance_Limit_V1=trimws(Balance_Limit_V1)) %>% 
+  subset(select=Balance_Limit_V1)
+train_df$Balance_Limit_V1 <- factor(as.factor(blv$Balance_Limit_V1),
+                          levels=c("100K","200K","300K","400K","500K","1M","1.5M","2.5M"))
+balance_response_ct <- CrossTable(train_df$Balance_Limit_V1 ,
+                               train_df$NEXT_MONTH_DEFAULT ,
+                               prop.r= FALSE,
+                               prop.c=TRUE,
+                               prop.chisq=FALSE, 
+                               chisq = FALSE,
+                               prop.t=TRUE)
+```
+Plotting
+```{r}
+ggplot(data=as.data.frame(balance_response_ct$prop.tbl),
+       aes(fill=y,y=Freq,x=x))+
+  geom_bar(stat = "identity",position = "fill")+
+  scale_y_continuous(labels = scales::percent_format())+
+  coord_flip()+theme_minimal()+
+  xlab("Balance Limit")+ylab("Percentages")
 ```
 
+
+```{r}
+train_df <- train_df %>% mutate(
+  Balance_Credit_Limit_Numeric = case_when(
+    Balance_Limit_V1 == "100K" ~ 100000,
+    Balance_Limit_V1 == "200K" ~ 200000,
+    Balance_Limit_V1 == "300K" ~ 300000,
+    Balance_Limit_V1 == "400K" ~ 400000,
+    Balance_Limit_V1 == "500K" ~ 500000,
+    Balance_Limit_V1 == "1M" ~ 1000000,
+    Balance_Limit_V1 == "1.5M" ~ 1500000,
+    Balance_Limit_V1 == "2M" ~ 2000000,
+    Balance_Limit_V1 == "2.5M" ~ 2500000
+  )
+) %>%
+  mutate(
+    Due_Credit_Lim_JULY=(DUE_AMT_JULY/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_AUG=(DUE_AMT_AUG/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_SEP=(DUE_AMT_SEP/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_OCT=(DUE_AMT_OCT/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_NOV=(DUE_AMT_NOV/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_DEC=(DUE_AMT_DEC/Balance_Credit_Limit_Numeric) * 100
+  )
+```
+
+```{r}
+ggplot(data=gather(train_df,key,value,c("Due_Credit_Lim_JULY","Due_Credit_Lim_AUG",
+                                        "Due_Credit_Lim_SEP","Due_Credit_Lim_OCT",
+                                        "Due_Credit_Lim_NOV","Due_Credit_Lim_DEC")) %>%
+         mutate(key = factor(key,levels=c("Due_Credit_Lim_JULY","Due_Credit_Lim_AUG",
+                                        "Due_Credit_Lim_SEP","Due_Credit_Lim_OCT",
+                                        "Due_Credit_Lim_NOV","Due_Credit_Lim_DEC"))),
+       aes(x=key,y=value))+
+  geom_boxplot(aes(fill=NEXT_MONTH_DEFAULT))+
+  coord_cartesian(ylim=c(0,200))+
+  scale_x_discrete(labels=c("JULY","AUG","SEP","OCT","NOV","DEC"))
+```
+
+## End of Day 1
