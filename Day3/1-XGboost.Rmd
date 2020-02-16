@@ -3,13 +3,185 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+```{r}
+library(tidyverse)
+library(e1071)
+library(MLmetrics)
+```
+
 ## Loading Data
+```{r}
+train_df <- read.csv("../credit_card_default_train.csv")
+test_df <- read.csv("../credit_card_default_test.csv")
+submission <- as.data.frame(test_df[,"Client_ID"])
+colnames(submission)[1] <- "Client_ID"
+```
 ## Preprocessing
+```{r}
+train_df$NEXT_MONTH_DEFAULT <- as.factor(as.numeric(train_df$NEXT_MONTH_DEFAULT))
+factor_pay <- function(x){factor(x,levels=seq(-2,9))}
+# train_df <- train_df %>% mutate_at(c("PAY_JULY","PAY_AUG","PAY_SEP",
+#                                      "PAY_OCT","PAY_NOV","PAY_DEC"),factor_pay)
+# normalize <- function(x){(x - mean(x)/sd(x))}
+train_df <- train_df %>% mutate_at(c("DUE_AMT_JULY","DUE_AMT_AUG",
+                                     "DUE_AMT_SEP","DUE_AMT_OCT",
+                                     "DUE_AMT_NOV","DUE_AMT_DEC",
+                                     "PAID_AMT_JULY","PAID_AMT_AUG",
+                                     "PAID_AMT_SEP","PAID_AMT_OCT",
+                                     "PAID_AMT_NOV","PAID_AMT_DEC"),scale)
+blv <- train_df%>% 
+  mutate(Balance_Limit_V1=trimws(Balance_Limit_V1)) %>% 
+  subset(select=Balance_Limit_V1)
+train_df$Balance_Limit_V1 <- factor(as.factor(blv$Balance_Limit_V1),
+                          levels=c("100K","200K","300K","400K","500K","1M","1.5M","2.5M"))
+```
+
+```{r,echo=FALSE}
+# test_df <- test_df %>% mutate_at(c("PAY_JULY","PAY_AUG","PAY_SEP",
+#                                      "PAY_OCT","PAY_NOV","PAY_DEC"),factor_pay)
+test_df <- test_df %>% mutate_at(c("DUE_AMT_JULY","DUE_AMT_AUG",
+                                   "DUE_AMT_SEP","DUE_AMT_OCT",
+                                   "DUE_AMT_NOV","DUE_AMT_DEC",
+                                   "PAID_AMT_JULY","PAID_AMT_AUG",
+                                   "PAID_AMT_SEP","PAID_AMT_OCT",
+                                   "PAID_AMT_NOV","PAID_AMT_DEC"),scale)
+blv <- test_df%>% 
+  mutate(Balance_Limit_V1=trimws(Balance_Limit_V1)) %>% 
+  subset(select=Balance_Limit_V1)
+test_df$Balance_Limit_V1 <- factor(as.factor(blv$Balance_Limit_V1),
+                          levels=c("100K","200K","300K","400K","500K","1M","1.5M","2.5M"))
+```
+```{r}
+nrow(test_df)
+```
 ## Feature Engineering
+```{r}
+# train_df$balance_july <- train_df$DUE_AMT_JULY - train_df$PAID_AMT_JULY
+# train_df$balance_aug <- train_df$DUE_AMT_AUG - train_df$PAID_AMT_AUG
+# train_df$balance_sep <- train_df$DUE_AMT_SEP - train_df$PAID_AMT_SEP
+# train_df$balance_oct <- train_df$DUE_AMT_OCT - train_df$PAID_AMT_OCT
+# train_df$balance_nov <- train_df$DUE_AMT_NOV - train_df$PAID_AMT_NOV
+# train_df$balance_dec <- train_df$DUE_AMT_DEC - train_df$PAID_AMT_DEC
+
+train_df <- train_df %>% mutate(
+  Balance_Limit_V1 = case_when(
+    Balance_Limit_V1 == "100K" ~ 100,
+    Balance_Limit_V1 == "200K" ~ 200,
+    Balance_Limit_V1 == "300K" ~ 300,
+    Balance_Limit_V1 == "400K" ~ 400,
+    Balance_Limit_V1 == "500K" ~ 500,
+    Balance_Limit_V1 == "1M" ~ 1000,
+    Balance_Limit_V1 == "1.5M" ~ 1500,
+    Balance_Limit_V1 == "2M" ~ 2000,
+    Balance_Limit_V1 == "2.5M" ~ 2500
+  )) %>% 
+  subset(select=-c(Gender,MARITAL_STATUS)) %>%
+  mutate(EDUCATION_STATUS = as.numeric(EDUCATION_STATUS),
+         AGE = as.numeric(AGE))
+# %>%
+#   mutate(
+#     Due_Credit_Lim_JULY=(DUE_AMT_JULY/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_AUG=(DUE_AMT_AUG/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_SEP=(DUE_AMT_SEP/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_OCT=(DUE_AMT_OCT/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_NOV=(DUE_AMT_NOV/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_DEC=(DUE_AMT_DEC/Balance_Limit_V1) * 100
+#   )
+# %>%
+#   mutate(
+#     balance_Credit_Lim_JULY=(balance_july/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_AUG=(balance_aug/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_SEP=(balance_sep/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_OCT=(balance_oct/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_NOV=(balance_nov/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_DEC=(balance_dec/Balance_Limit_V1) * 100
+#   )
+```
+```{r,echo=FALSE}
+# test_df$balance_july <- test_df$DUE_AMT_JULY - test_df$PAID_AMT_JULY
+# test_df$balance_aug <- test_df$DUE_AMT_AUG - test_df$PAID_AMT_AUG
+# test_df$balance_sep <- test_df$DUE_AMT_SEP - test_df$PAID_AMT_SEP
+# test_df$balance_oct <- test_df$DUE_AMT_OCT - test_df$PAID_AMT_OCT
+# test_df$balance_nov <- test_df$DUE_AMT_NOV - test_df$PAID_AMT_NOV
+# test_df$balance_dec <- test_df$DUE_AMT_DEC - test_df$PAID_AMT_DEC
+
+test_df <- test_df %>% mutate(
+  Balance_Limit_V1 = case_when(
+    Balance_Limit_V1 == "100K" ~ 100,
+    Balance_Limit_V1 == "200K" ~ 200,
+    Balance_Limit_V1 == "300K" ~ 300,
+    Balance_Limit_V1 == "400K" ~ 400,
+    Balance_Limit_V1 == "500K" ~ 500,
+    Balance_Limit_V1 == "1M" ~ 1000,
+    Balance_Limit_V1 == "1.5M" ~ 1500,
+    Balance_Limit_V1 == "2M" ~ 2000,
+    Balance_Limit_V1 == "2.5M" ~ 2500
+  )) %>% 
+  subset(select=-c(Gender,MARITAL_STATUS)) %>%
+  mutate(EDUCATION_STATUS = as.numeric(EDUCATION_STATUS),
+         AGE = as.numeric(AGE)) 
+# %>%
+#   mutate(
+#     Due_Credit_Lim_JULY=(DUE_AMT_JULY/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_AUG=(DUE_AMT_AUG/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_SEP=(DUE_AMT_SEP/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_OCT=(DUE_AMT_OCT/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_NOV=(DUE_AMT_NOV/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_DEC=(DUE_AMT_DEC/Balance_Limit_V1) * 100
+#   )
+# %>%
+#   mutate(
+#     balance_Credit_Lim_JULY=(balance_july/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_AUG=(balance_aug/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_SEP=(balance_sep/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_OCT=(balance_oct/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_NOV=(balance_nov/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_DEC=(balance_dec/Balance_Limit_V1) * 100
+#   )
+```
+```{r}
+train_df[rowSums(is.na(train_df))>0,]
+```
+```{r}
+test_df[rowSums(is.na(test_df))>0,]
+```
+```{r}
+nrow(test_df)
+```
 ## Splitting
+```{r}
+train_split <- train_df %>% sample_frac(0.65)
+validation_split <- train_df %>% anti_join(train_split,by="Client_ID")
+test_split <- validation_split %>% sample_frac(0.5)
+validation_split <- validation_split %>% anti_join(test_split,by="Client_ID")
+str(train_split)
+```
 ## Model fitting
+
+```{r}
+glm_model<- glm(NEXT_MONTH_DEFAULT ~ .,
+                    data=subset(train_split,select=-c(Client_ID)), 
+                    family=binomial)
+```
+
+```{r}
+summary(glm_model)
+```
+
 ## Confusion Matrix
-## PCA analysis and visualization
-## Model tuning
-## Visualization
+```{r}
+predictions <- predict(glm_model,subset(test_split,select=-c(Client_ID,NEXT_MONTH_DEFAULT)))
+predictions <- ifelse(predictions >= 0.5,1,0)
+cm <- CrossTable(predictions,test_split$NEXT_MONTH_DEFAULT)
+F1_Score(predictions,test_split$NEXT_MONTH_DEFAULT)
+cm
+```
+## Generating submission
+```{r}
+test_predictions <- predict(glm_model,subset(test_df,select=-c(Client_ID)))
+submission$NEXT_MONTH_DEFAULT <- test_predictions
+```
+```{r}
+write.csv(submission,"output/svm_05_30_PM.csv",row.names = F)
+```
 ## Final Remarks

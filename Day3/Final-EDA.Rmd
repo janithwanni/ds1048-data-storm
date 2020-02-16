@@ -1,0 +1,312 @@
+---
+title: "R Notebook"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+# Final EDA
+
+## Introduction
+Credit Card Defaults can occur due to a number of reasons. According to the use case defintion
+> A default can occur when a borrower is unable to make timely payments, misses payments, or avoids/stops making payments
+
+The question that we are concerend with is 
+> Which priority clients have the highest risk of credit card default?
+
+_Libraries_ 
+```{r}
+library(tidyverse)
+library(gmodels)
+library(ggridges)
+library(reshape2)
+library(plotly)
+```
+## Loading Data
+```{r}
+train_df <- read.csv("../credit_card_default_train.csv")
+train_df$NEXT_MONTH_DEFAULT <- as.factor(train_df$NEXT_MONTH_DEFAULT)
+test_df <- read.csv("../credit_card_default_test.csv")
+print(nrow(train_df))
+print(colnames(train_df))
+print(str(train_df))
+print(summary(train_df))
+```
+
+## Categorical Variables
+
+First let's explore the Categorical variables. Since we are interested in what are the factors that affect the risk of credit card default, we shall be exploring considering the two levels of the response variable
+
+### Gender
+```{r}
+train_df$Gender <- factor(train_df$Gender) # converts to a categorical variable
+train_df$NEXT_MONTH_DEFAULT <- factor(train_df$NEXT_MONTH_DEFAULT) # converts to a categorical variable
+p1 <- ggplot(data=train_df, aes(x=factor(1), stat="bin", fill=Gender)) + 
+  geom_bar(position="fill") # Stacked bar chart
+p1 <- p1 + ggtitle("Gender by Next Month Default") + xlab("") + ylab("NEXT_MONTH_DEFAULT") # Adds titles
+p1 <- p1 + facet_grid(facets=. ~ NEXT_MONTH_DEFAULT) # Side by side bar chart
+p1 <- p1 + coord_polar(theta="y") # side by side pie chart
+p1
+```
+_*As it can be clearly seen here, gender does not have a significant difference when compared with defaulting credit cards and not defaulting. *_
+
+### Marital status
+```{r}
+train_df$Gender <- factor(train_df$MARITAL_STATUS) # converts to a categorical variable
+train_df$NEXT_MONTH_DEFAULT <- factor(train_df$NEXT_MONTH_DEFAULT) # converts to a categorical variable
+p2 <- ggplot(data=train_df, aes(x=factor(1), stat="bin", fill=MARITAL_STATUS)) + 
+  geom_bar(position="fill") # Stacked bar chart
+p2 <- p2 + ggtitle("Marital Status by Next Month Default") + xlab("") + ylab("NEXT_MONTH_DEFAULT") # Adds titles
+p2 <- p2 + facet_grid(facets=. ~ NEXT_MONTH_DEFAULT) # Side by side bar chart
+p2 <- p2 + coord_polar(theta="y") # side by side pie chart
+p2
+```
+_*As it can be clearly seen here, marital status does not have a significant difference when compared with defaulting credit cards and not defaulting.*_
+-*Hence we have clear reasons for removing the variables gender and marital status*_
+
+### Education Status
+```{r}
+education_response_ct <- CrossTable(train_df$EDUCATION_STATUS,
+                               train_df$NEXT_MONTH_DEFAULT ,
+                               prop.r= FALSE,
+                               prop.c=TRUE,
+                               prop.chisq=FALSE, 
+                               chisq = TRUE,
+                               prop.t=TRUE)
+```
+Plotting
+```{r}
+ggplot(data=as.data.frame(education_response_ct$prop.tbl),
+       aes(x=x,y=Freq,fill=y))+
+  geom_bar(stat = "identity",position = "fill")+
+  scale_y_continuous(labels = scales::percent_format())+
+  coord_flip()+theme_minimal()+
+  xlab("Education Status")+ylab("Percentages")
+```
+_*Even though it is not evident that there is a relationship between education status and the response variable, the chi square test confirms that there is an association between the two variables*_
+### Balance Limit
+```{r}
+blv <- train_df%>% 
+  mutate(Balance_Limit_V1=trimws(Balance_Limit_V1)) %>% 
+  subset(select=Balance_Limit_V1)
+train_df$Balance_Limit_V1 <- factor(as.factor(blv$Balance_Limit_V1),
+                          levels=c("100K","200K","300K","400K","500K","1M","1.5M","2.5M"))
+balance_response_ct <- CrossTable(train_df$Balance_Limit_V1 ,
+                               train_df$NEXT_MONTH_DEFAULT ,
+                               prop.r= FALSE,
+                               prop.c=TRUE,
+                               prop.chisq=FALSE, 
+                               chisq = TRUE,
+                               prop.t=TRUE)
+```
+
+Plotting
+```{r}
+ggplot(data=as.data.frame(balance_response_ct$prop.tbl),
+       aes(fill=y,y=Freq,x=x))+
+  geom_bar(stat = "identity",position = "fill")+
+  scale_y_continuous(labels = scales::percent_format())+
+  coord_flip()+theme_minimal()+
+  xlab("Balance Limit")+ylab("Percentages")
+```
+_*Here it is clear that a client with a lower balance limit has a higher chance of getting a credit card default. Also from the chi square test it is clear that with a p-value less than alpha=0.05 we can reject H0 and come to the conclusion that there is balance limit and the response variable are not independent*_
+
+### Payment due variable
+
+```{r}
+ggplot(train_df %>%
+  gather(PAY_JULY , PAY_AUG , PAY_SEP , PAY_OCT , PAY_NOV , PAY_DEC , key = "PAY_MONTH",value = "NO_MONTHS_PAY"), aes(x = NO_MONTHS_PAY, y = PAY_MONTH, fill = NEXT_MONTH_DEFAULT)) +
+  geom_density_ridges(scale=0.9,alpha=0.7) +
+  theme_ridges()+
+  labs(fill='Credit Default') 
+```
+
+```{r}
+```
+
+## Quantitative Variables
+
+### Due amounts
+```{r}
+ggplot(data=gather(train_df,key,value,c("DUE_AMT_JULY","DUE_AMT_AUG",
+                                        "DUE_AMT_SEP","DUE_AMT_OCT",
+                                        "DUE_AMT_NOV","DUE_AMT_DEC")) %>% 
+         mutate(key = factor(key,levels=c("DUE_AMT_JULY","DUE_AMT_AUG",
+                                        "DUE_AMT_SEP","DUE_AMT_OCT",
+                                        "DUE_AMT_NOV","DUE_AMT_DEC"))),
+       aes(x = key,y = value,fill=NEXT_MONTH_DEFAULT))+
+  geom_boxplot()+
+  scale_x_discrete(labels=c("JULY","AUG","SEP","OCT","NOV","DEC"))
+```
+
+### Paid amounts
+```{r}
+ggplot(data=gather(train_df,key,value,c("PAID_AMT_JULY","PAID_AMT_AUG",
+                                      "PAID_AMT_SEP","PAID_AMT_OCT",
+                                      "PAID_AMT_NOV","PAID_AMT_DEC")) %>%
+         mutate(key = factor(key,levels=c("PAID_AMT_JULY","PAID_AMT_AUG",
+                                      "PAID_AMT_SEP","PAID_AMT_OCT",
+                                      "PAID_AMT_NOV","PAID_AMT_DEC"))),
+       aes(x = key,y = value,fill=NEXT_MONTH_DEFAULT))+
+  geom_boxplot()+
+  scale_x_discrete(labels=c("JULY","AUG","SEP","OCT","NOV","DEC"))
+```
+
+## Further visualizations
+
+### Paid amount as a ratio of due amount
+```{r}
+eps<-0.1
+train_df$duepaid_JULY <- train_df$PAID_AMT_JULY/(train_df$DUE_AMT_JULY+eps)
+train_df$duepaid_AUG <-  train_df$PAID_AMT_AUG/(train_df$DUE_AMT_AUG+eps)
+train_df$duepaid_SEP <-  train_df$PAID_AMT_SEP/(train_df$DUE_AMT_SEP+eps)
+train_df$duepaid_OCT <-  train_df$PAID_AMT_OCT/(train_df$DUE_AMT_OCT+eps)
+train_df$duepaid_NOV <-  train_df$PAID_AMT_NOV/(train_df$DUE_AMT_NOV+eps)
+train_df$duepaid_DEC <-  train_df$PAID_AMT_DEC/(train_df$DUE_AMT_DEC+eps)
+
+train_df$duepaid_JULY[is.nan(train_df$duepaid_JULY)] <- 0
+train_df$duepaid_AUG[is.nan(train_df$duepaid_AUG)] <- 0
+train_df$duepaid_SEP[is.nan(train_df$duepaid_SEP)] <- 0
+train_df$duepaid_OCT[is.nan(train_df$duepaid_OCT)] <- 0
+train_df$duepaid_NOV[is.nan(train_df$duepaid_NOV)] <- 0
+train_df$duepaid_DEC[is.nan(train_df$duepaid_DEC)] <- 0
+
+new04 <- data.frame(train_df$duepaid_NOV,train_df$duepaid_OCT,
+                    train_df$duepaid_SEP,train_df$duepaid_AUG,
+                    train_df$duepaid_JULY,train_df$duepaid_DEC,
+                    as.factor(train_df$NEXT_MONTH_DEFAULT))
+new05 <- new04 %>%
+  gather(train_df.duepaid_DEC,train_df.duepaid_NOV,
+         train_df.duepaid_OCT,train_df.duepaid_SEP,
+         train_df.duepaid_AUG,train_df.duepaid_JULY, key = "month_paid_due",value = "ratio")
+
+new06 <- na.omit(new05)
+new06$month_paid_due <- factor(new06$month_paid_due,
+                               levels=c("train_df.duepaid_JULY","train_df.duepaid_AUG",
+                                        "train_df.duepaid_SEP","train_df.duepaid_OCT",
+                                        "train_df.duepaid_NOV","train_df.duepaid_DEC"))
+colnames(new06)[1] <- "response"
+ggplot(new06, aes(x = month_paid_due , y = ratio)) + 
+  geom_boxplot(aes(fill=response))+
+  coord_cartesian(ylim=c(0,1))+
+  theme_minimal()+
+  scale_x_discrete(labels=c("JULY","AUG","SEP","OCT","NOV","DEC"))
+```
+### Due amount as a ratio of credit limit
+```{r}
+train_df <- train_df %>% mutate(
+  Balance_Credit_Limit_Numeric = case_when(
+    Balance_Limit_V1 == "100K" ~ 100000,
+    Balance_Limit_V1 == "200K" ~ 200000,
+    Balance_Limit_V1 == "300K" ~ 300000,
+    Balance_Limit_V1 == "400K" ~ 400000,
+    Balance_Limit_V1 == "500K" ~ 500000,
+    Balance_Limit_V1 == "1M" ~ 1000000,
+    Balance_Limit_V1 == "1.5M" ~ 1500000,
+    Balance_Limit_V1 == "2M" ~ 2000000,
+    Balance_Limit_V1 == "2.5M" ~ 2500000
+  )
+) %>%
+  mutate(
+    Due_Credit_Lim_JULY=(DUE_AMT_JULY/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_AUG=(DUE_AMT_AUG/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_SEP=(DUE_AMT_SEP/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_OCT=(DUE_AMT_OCT/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_NOV=(DUE_AMT_NOV/Balance_Credit_Limit_Numeric) * 100,
+    Due_Credit_Lim_DEC=(DUE_AMT_DEC/Balance_Credit_Limit_Numeric) * 100
+  ) %>%
+  na.omit()
+```
+```{r}
+ggplot(data=gather(train_df,key,value,c("Due_Credit_Lim_JULY","Due_Credit_Lim_AUG",
+                                        "Due_Credit_Lim_SEP","Due_Credit_Lim_OCT",
+                                        "Due_Credit_Lim_NOV","Due_Credit_Lim_DEC")) %>%
+         mutate(key = factor(key,levels=c("Due_Credit_Lim_JULY","Due_Credit_Lim_AUG",
+                                        "Due_Credit_Lim_SEP","Due_Credit_Lim_OCT",
+                                        "Due_Credit_Lim_NOV","Due_Credit_Lim_DEC"))),
+       aes(x=key,y=value))+
+  geom_boxplot(aes(fill=NEXT_MONTH_DEFAULT))+
+  coord_cartesian(ylim=c(0,200))+
+  scale_x_discrete(labels=c("JULY","AUG","SEP","OCT","NOV","DEC"))
+```
+### Paid amount as a ratio of credit limit
+
+### Balance feature
+Here we consider the balance as the ```Due amount - Paid amount```
+```{r}
+train_df$balance_july <- train_df$DUE_AMT_JULY - train_df$PAID_AMT_JULY
+train_df$balance_aug <- train_df$DUE_AMT_AUG - train_df$PAID_AMT_AUG
+train_df$balance_sep <- train_df$DUE_AMT_SEP - train_df$PAID_AMT_SEP
+train_df$balance_oct <- train_df$DUE_AMT_OCT - train_df$PAID_AMT_OCT
+train_df$balance_nov <- train_df$DUE_AMT_NOV - train_df$PAID_AMT_NOV
+train_df$balance_dec <- train_df$DUE_AMT_DEC - train_df$PAID_AMT_DEC
+
+ggplot(data=gather(train_df,key,value,c("balance_july","balance_aug",
+                                        "balance_sep","balance_oct",
+                                        "balance_nov","balance_dec")) %>%
+         mutate(key = factor(key,levels =c("balance_july","balance_aug",
+                                        "balance_sep","balance_oct",
+                                        "balance_nov","balance_dec"))),
+       aes(x = key,y = value))+
+  geom_boxplot(aes(fill=NEXT_MONTH_DEFAULT))+
+  theme_minimal()+
+  scale_x_discrete(labels=c("JULY","AUG","SEP","OCT","NOV","DEC"))
+```
+### Balance as a ratio of of credit limit
+
+```{r}
+train_df <- train_df %>% mutate(
+    balance_Credit_Lim_JULY=(balance_july/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_AUG=(balance_aug/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_SEP=(balance_sep/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_OCT=(balance_oct/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_NOV=(balance_nov/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_DEC=(balance_dec/Balance_Credit_Limit_Numeric) * 100
+  ) %>%
+  na.omit()
+```
+```{r}
+ggplot(data=gather(train_df,key,value,c("balance_Credit_Lim_JULY","balance_Credit_Lim_AUG",
+                                        "balance_Credit_Lim_SEP","balance_Credit_Lim_OCT",
+                                        "balance_Credit_Lim_NOV","balance_Credit_Lim_DEC")) %>%
+         mutate(key = factor(key,levels=c("balance_Credit_Lim_JULY","balance_Credit_Lim_AUG",
+                                        "balance_Credit_Lim_SEP","balance_Credit_Lim_OCT",
+                                        "balance_Credit_Lim_NOV","balance_Credit_Lim_DEC"))),
+       aes(x=key,y=value))+
+  geom_boxplot(aes(fill=NEXT_MONTH_DEFAULT))+
+  coord_cartesian(ylim=c(0,200))+
+  scale_x_discrete(labels=c("JULY","AUG","SEP","OCT","NOV","DEC"))
+```
+### Pay delay with the Paid value
+```{r}
+ggplot(data=train_df%>%
+         gather(pay_key,pay_value,c("PAY_JULY","PAY_AUG",
+                                        "PAY_SEP","PAY_OCT",
+                                        "PAY_NOV","PAY_DEC")) %>%
+         gather(paid_key,paid_value,c("PAID_AMT_JULY","PAID_AMT_AUG",
+                                      "PAID_AMT_SEP","PAID_AMT_OCT",
+                                      "PAID_AMT_NOV","PAID_AMT_DEC")) %>%
+         mutate(pay_key = factor(pay_key,levels=c("PAY_JULY","PAY_AUG",
+                                        "PAY_SEP","PAY_OCT",
+                                        "PAY_NOV","PAY_DEC")),
+                pay_value=factor(pay_value,levels=seq(-2,9))),
+       aes(y=paid_value,x=pay_value,fill=NEXT_MONTH_DEFAULT))+
+  # geom_line(aes(color=NEXT_MONTH_DEFAULT))+
+  geom_bar(position="dodge", stat="identity")+
+  facet_grid(pay_key ~ .) + theme_minimal()
+```
+### Correlation matrix plot
+
+Disregard this as it is too cluttered
+```{r}
+train_df_to_cor <- train_df %>% mutate_if(is.factor,as.numeric)
+corrmat <- cor(train_df_to_cor,method="spearman")
+melted <- melt(corrmat) %>%
+  mutate(text = paste0("x: ", Var1, "\n", "y: ", Var2, "\n", "Value: ",round(value,2), "\n"))
+p <- ggplot(melted, aes(Var1, Var2, fill= value, text=text)) + 
+  geom_tile()
+p
+ggplotly(p, tooltip="text")
+```

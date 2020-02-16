@@ -40,8 +40,9 @@ new03 <- data.frame(new2$NEXT_MONTH_DEFAULT,new2$PAY_MONTH,new2$NO_MONTHS_PAY)
 library(ggridges)
 library(ggplot2)
 ggplot(new03, aes(x = new2.NO_MONTHS_PAY, y = new2.PAY_MONTH, fill = new2.NEXT_MONTH_DEFAULT)) +
-  geom_density_ridges() +
-  theme_ridges()
+  geom_density_ridges(scale=0.9,alpha=0.7) +
+  theme_ridges()+
+  labs(fill='Credit Default') 
 
 #Analysis of the percetage of credit limit vs due amount.
 train <- subset.data.frame(train,train$DUE_AMT_JULY > 0&train$DUE_AMT_AUG > 0&

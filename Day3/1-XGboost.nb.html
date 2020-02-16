@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
@@ -1699,6 +1698,7 @@ summary {
   border: none;
   display: inline-block;
   border-radius: 4px;
+  background-color: transparent;
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li {
@@ -1749,39 +1749,197 @@ summary {
 
 
 <!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5dmVyc2UpXG5saWJyYXJ5KGUxMDcxKVxubGlicmFyeShNTG1ldHJpY3MpXG5gYGAifQ== -->
+<pre class="r"><code>library(tidyverse)
+library(e1071)
+library(MLmetrics)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 <div id="loading-data" class="section level2">
 <h2>Loading Data</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudHJhaW5fZGYgPC0gcmVhZC5jc3YoXCIuLi9jcmVkaXRfY2FyZF9kZWZhdWx0X3RyYWluLmNzdlwiKVxudGVzdF9kZiA8LSByZWFkLmNzdihcIi4uL2NyZWRpdF9jYXJkX2RlZmF1bHRfdGVzdC5jc3ZcIilcbnN1Ym1pc3Npb24gPC0gYXMuZGF0YS5mcmFtZSh0ZXN0X2RmWyxcIkNsaWVudF9JRFwiXSlcbmNvbG5hbWVzKHN1Ym1pc3Npb24pWzFdIDwtIFwiQ2xpZW50X0lEXCJcbmBgYCJ9 -->
+<pre class="r"><code>train_df &lt;- read.csv(&quot;../credit_card_default_train.csv&quot;)
+test_df &lt;- read.csv(&quot;../credit_card_default_test.csv&quot;)
+submission &lt;- as.data.frame(test_df[,&quot;Client_ID&quot;])
+colnames(submission)[1] &lt;- &quot;Client_ID&quot;</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 </div>
 <div id="preprocessing" class="section level2">
 <h2>Preprocessing</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudHJhaW5fZGYkTkVYVF9NT05USF9ERUZBVUxUIDwtIGFzLmZhY3Rvcihhcy5udW1lcmljKHRyYWluX2RmJE5FWFRfTU9OVEhfREVGQVVMVCkpXG5mYWN0b3JfcGF5IDwtIGZ1bmN0aW9uKHgpe2ZhY3Rvcih4LGxldmVscz1zZXEoLTIsOSkpfVxuIyB0cmFpbl9kZiA8LSB0cmFpbl9kZiAlPiUgbXV0YXRlX2F0KGMoXCJQQVlfSlVMWVwiLFwiUEFZX0FVR1wiLFwiUEFZX1NFUFwiLFxuIyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXCJQQVlfT0NUXCIsXCJQQVlfTk9WXCIsXCJQQVlfREVDXCIpLGZhY3Rvcl9wYXkpXG4jIG5vcm1hbGl6ZSA8LSBmdW5jdGlvbih4KXsoeCAtIG1lYW4oeCkvc2QoeCkpfVxudHJhaW5fZGYgPC0gdHJhaW5fZGYgJT4lIG11dGF0ZV9hdChjKFwiRFVFX0FNVF9KVUxZXCIsXCJEVUVfQU1UX0FVR1wiLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFwiRFVFX0FNVF9TRVBcIixcIkRVRV9BTVRfT0NUXCIsXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXCJEVUVfQU1UX05PVlwiLFwiRFVFX0FNVF9ERUNcIixcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBcIlBBSURfQU1UX0pVTFlcIixcIlBBSURfQU1UX0FVR1wiLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFwiUEFJRF9BTVRfU0VQXCIsXCJQQUlEX0FNVF9PQ1RcIixcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBcIlBBSURfQU1UX05PVlwiLFwiUEFJRF9BTVRfREVDXCIpLHNjYWxlKVxuYmx2IDwtIHRyYWluX2RmJT4lIFxuICBtdXRhdGUoQmFsYW5jZV9MaW1pdF9WMT10cmltd3MoQmFsYW5jZV9MaW1pdF9WMSkpICU+JSBcbiAgc3Vic2V0KHNlbGVjdD1CYWxhbmNlX0xpbWl0X1YxKVxudHJhaW5fZGYkQmFsYW5jZV9MaW1pdF9WMSA8LSBmYWN0b3IoYXMuZmFjdG9yKGJsdiRCYWxhbmNlX0xpbWl0X1YxKSxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgbGV2ZWxzPWMoXCIxMDBLXCIsXCIyMDBLXCIsXCIzMDBLXCIsXCI0MDBLXCIsXCI1MDBLXCIsXCIxTVwiLFwiMS41TVwiLFwiMi41TVwiKSlcbmBgYCJ9 -->
+<pre class="r"><code>train_df$NEXT_MONTH_DEFAULT &lt;- as.factor(as.numeric(train_df$NEXT_MONTH_DEFAULT))
+factor_pay &lt;- function(x){factor(x,levels=seq(-2,9))}
+# train_df &lt;- train_df %&gt;% mutate_at(c(&quot;PAY_JULY&quot;,&quot;PAY_AUG&quot;,&quot;PAY_SEP&quot;,
+#                                      &quot;PAY_OCT&quot;,&quot;PAY_NOV&quot;,&quot;PAY_DEC&quot;),factor_pay)
+# normalize &lt;- function(x){(x - mean(x)/sd(x))}
+train_df &lt;- train_df %&gt;% mutate_at(c(&quot;DUE_AMT_JULY&quot;,&quot;DUE_AMT_AUG&quot;,
+                                     &quot;DUE_AMT_SEP&quot;,&quot;DUE_AMT_OCT&quot;,
+                                     &quot;DUE_AMT_NOV&quot;,&quot;DUE_AMT_DEC&quot;,
+                                     &quot;PAID_AMT_JULY&quot;,&quot;PAID_AMT_AUG&quot;,
+                                     &quot;PAID_AMT_SEP&quot;,&quot;PAID_AMT_OCT&quot;,
+                                     &quot;PAID_AMT_NOV&quot;,&quot;PAID_AMT_DEC&quot;),scale)
+blv &lt;- train_df%&gt;% 
+  mutate(Balance_Limit_V1=trimws(Balance_Limit_V1)) %&gt;% 
+  subset(select=Balance_Limit_V1)
+train_df$Balance_Limit_V1 &lt;- factor(as.factor(blv$Balance_Limit_V1),
+                          levels=c(&quot;100K&quot;,&quot;200K&quot;,&quot;300K&quot;,&quot;400K&quot;,&quot;500K&quot;,&quot;1M&quot;,&quot;1.5M&quot;,&quot;2.5M&quot;))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubnJvdyh0ZXN0X2RmKVxuYGBgIn0= -->
+<pre class="r"><code>nrow(test_df)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 </div>
 <div id="feature-engineering" class="section level2">
 <h2>Feature Engineering</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyB0cmFpbl9kZiRiYWxhbmNlX2p1bHkgPC0gdHJhaW5fZGYkRFVFX0FNVF9KVUxZIC0gdHJhaW5fZGYkUEFJRF9BTVRfSlVMWVxuIyB0cmFpbl9kZiRiYWxhbmNlX2F1ZyA8LSB0cmFpbl9kZiREVUVfQU1UX0FVRyAtIHRyYWluX2RmJFBBSURfQU1UX0FVR1xuIyB0cmFpbl9kZiRiYWxhbmNlX3NlcCA8LSB0cmFpbl9kZiREVUVfQU1UX1NFUCAtIHRyYWluX2RmJFBBSURfQU1UX1NFUFxuIyB0cmFpbl9kZiRiYWxhbmNlX29jdCA8LSB0cmFpbl9kZiREVUVfQU1UX09DVCAtIHRyYWluX2RmJFBBSURfQU1UX09DVFxuIyB0cmFpbl9kZiRiYWxhbmNlX25vdiA8LSB0cmFpbl9kZiREVUVfQU1UX05PViAtIHRyYWluX2RmJFBBSURfQU1UX05PVlxuIyB0cmFpbl9kZiRiYWxhbmNlX2RlYyA8LSB0cmFpbl9kZiREVUVfQU1UX0RFQyAtIHRyYWluX2RmJFBBSURfQU1UX0RFQ1xuXG50cmFpbl9kZiA8LSB0cmFpbl9kZiAlPiUgbXV0YXRlKFxuICBCYWxhbmNlX0xpbWl0X1YxID0gY2FzZV93aGVuKFxuICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gXCIxMDBLXCIgfiAxMDAsXG4gICAgQmFsYW5jZV9MaW1pdF9WMSA9PSBcIjIwMEtcIiB+IDIwMCxcbiAgICBCYWxhbmNlX0xpbWl0X1YxID09IFwiMzAwS1wiIH4gMzAwLFxuICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gXCI0MDBLXCIgfiA0MDAsXG4gICAgQmFsYW5jZV9MaW1pdF9WMSA9PSBcIjUwMEtcIiB+IDUwMCxcbiAgICBCYWxhbmNlX0xpbWl0X1YxID09IFwiMU1cIiB+IDEwMDAsXG4gICAgQmFsYW5jZV9MaW1pdF9WMSA9PSBcIjEuNU1cIiB+IDE1MDAsXG4gICAgQmFsYW5jZV9MaW1pdF9WMSA9PSBcIjJNXCIgfiAyMDAwLFxuICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gXCIyLjVNXCIgfiAyNTAwXG4gICkpICU+JSBcbiAgc3Vic2V0KHNlbGVjdD0tYyhHZW5kZXIsTUFSSVRBTF9TVEFUVVMpKSAlPiVcbiAgbXV0YXRlKEVEVUNBVElPTl9TVEFUVVMgPSBhcy5udW1lcmljKEVEVUNBVElPTl9TVEFUVVMpLFxuICAgICAgICAgQUdFID0gYXMubnVtZXJpYyhBR0UpKVxuIyAlPiVcbiMgICBtdXRhdGUoXG4jICAgICBEdWVfQ3JlZGl0X0xpbV9KVUxZPShEVUVfQU1UX0pVTFkvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsXG4jICAgICBEdWVfQ3JlZGl0X0xpbV9BVUc9KERVRV9BTVRfQVVHL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLFxuIyAgICAgRHVlX0NyZWRpdF9MaW1fU0VQPShEVUVfQU1UX1NFUC9CYWxhbmNlX0xpbWl0X1YxKSAqIDEwMCxcbiMgICAgIER1ZV9DcmVkaXRfTGltX09DVD0oRFVFX0FNVF9PQ1QvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsXG4jICAgICBEdWVfQ3JlZGl0X0xpbV9OT1Y9KERVRV9BTVRfTk9WL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLFxuIyAgICAgRHVlX0NyZWRpdF9MaW1fREVDPShEVUVfQU1UX0RFQy9CYWxhbmNlX0xpbWl0X1YxKSAqIDEwMFxuIyAgIClcbiMgJT4lXG4jICAgbXV0YXRlKFxuIyAgICAgYmFsYW5jZV9DcmVkaXRfTGltX0pVTFk9KGJhbGFuY2VfanVseS9CYWxhbmNlX0xpbWl0X1YxKSAqIDEwMCxcbiMgICAgIGJhbGFuY2VfQ3JlZGl0X0xpbV9BVUc9KGJhbGFuY2VfYXVnL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLFxuIyAgICAgYmFsYW5jZV9DcmVkaXRfTGltX1NFUD0oYmFsYW5jZV9zZXAvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsXG4jICAgICBiYWxhbmNlX0NyZWRpdF9MaW1fT0NUPShiYWxhbmNlX29jdC9CYWxhbmNlX0xpbWl0X1YxKSAqIDEwMCxcbiMgICAgIGJhbGFuY2VfQ3JlZGl0X0xpbV9OT1Y9KGJhbGFuY2Vfbm92L0JhbGFuY2VfTGltaXRfVjEpICogMTAwLFxuIyAgICAgYmFsYW5jZV9DcmVkaXRfTGltX0RFQz0oYmFsYW5jZV9kZWMvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDBcbiMgICApXG5gYGAifQ== -->
+<pre class="r"><code># train_df$balance_july &lt;- train_df$DUE_AMT_JULY - train_df$PAID_AMT_JULY
+# train_df$balance_aug &lt;- train_df$DUE_AMT_AUG - train_df$PAID_AMT_AUG
+# train_df$balance_sep &lt;- train_df$DUE_AMT_SEP - train_df$PAID_AMT_SEP
+# train_df$balance_oct &lt;- train_df$DUE_AMT_OCT - train_df$PAID_AMT_OCT
+# train_df$balance_nov &lt;- train_df$DUE_AMT_NOV - train_df$PAID_AMT_NOV
+# train_df$balance_dec &lt;- train_df$DUE_AMT_DEC - train_df$PAID_AMT_DEC
+
+train_df &lt;- train_df %&gt;% mutate(
+  Balance_Limit_V1 = case_when(
+    Balance_Limit_V1 == &quot;100K&quot; ~ 100,
+    Balance_Limit_V1 == &quot;200K&quot; ~ 200,
+    Balance_Limit_V1 == &quot;300K&quot; ~ 300,
+    Balance_Limit_V1 == &quot;400K&quot; ~ 400,
+    Balance_Limit_V1 == &quot;500K&quot; ~ 500,
+    Balance_Limit_V1 == &quot;1M&quot; ~ 1000,
+    Balance_Limit_V1 == &quot;1.5M&quot; ~ 1500,
+    Balance_Limit_V1 == &quot;2M&quot; ~ 2000,
+    Balance_Limit_V1 == &quot;2.5M&quot; ~ 2500
+  )) %&gt;% 
+  subset(select=-c(Gender,MARITAL_STATUS)) %&gt;%
+  mutate(EDUCATION_STATUS = as.numeric(EDUCATION_STATUS),
+         AGE = as.numeric(AGE))
+# %&gt;%
+#   mutate(
+#     Due_Credit_Lim_JULY=(DUE_AMT_JULY/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_AUG=(DUE_AMT_AUG/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_SEP=(DUE_AMT_SEP/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_OCT=(DUE_AMT_OCT/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_NOV=(DUE_AMT_NOV/Balance_Limit_V1) * 100,
+#     Due_Credit_Lim_DEC=(DUE_AMT_DEC/Balance_Limit_V1) * 100
+#   )
+# %&gt;%
+#   mutate(
+#     balance_Credit_Lim_JULY=(balance_july/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_AUG=(balance_aug/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_SEP=(balance_sep/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_OCT=(balance_oct/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_NOV=(balance_nov/Balance_Limit_V1) * 100,
+#     balance_Credit_Lim_DEC=(balance_dec/Balance_Limit_V1) * 100
+#   )</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudHJhaW5fZGZbcm93U3Vtcyhpcy5uYSh0cmFpbl9kZikpPjAsXVxuYGBgIn0= -->
+<pre class="r"><code>train_df[rowSums(is.na(train_df))&gt;0,]</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGVzdF9kZltyb3dTdW1zKGlzLm5hKHRlc3RfZGYpKT4wLF1cbmBgYCJ9 -->
+<pre class="r"><code>test_df[rowSums(is.na(test_df))&gt;0,]</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubnJvdyh0ZXN0X2RmKVxuYGBgIn0= -->
+<pre class="r"><code>nrow(test_df)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 </div>
 <div id="splitting" class="section level2">
 <h2>Splitting</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudHJhaW5fc3BsaXQgPC0gdHJhaW5fZGYgJT4lIHNhbXBsZV9mcmFjKDAuNjUpXG52YWxpZGF0aW9uX3NwbGl0IDwtIHRyYWluX2RmICU+JSBhbnRpX2pvaW4odHJhaW5fc3BsaXQsYnk9XCJDbGllbnRfSURcIilcbnRlc3Rfc3BsaXQgPC0gdmFsaWRhdGlvbl9zcGxpdCAlPiUgc2FtcGxlX2ZyYWMoMC41KVxudmFsaWRhdGlvbl9zcGxpdCA8LSB2YWxpZGF0aW9uX3NwbGl0ICU+JSBhbnRpX2pvaW4odGVzdF9zcGxpdCxieT1cIkNsaWVudF9JRFwiKVxuc3RyKHRyYWluX3NwbGl0KVxuYGBgIn0= -->
+<pre class="r"><code>train_split &lt;- train_df %&gt;% sample_frac(0.65)
+validation_split &lt;- train_df %&gt;% anti_join(train_split,by=&quot;Client_ID&quot;)
+test_split &lt;- validation_split %&gt;% sample_frac(0.5)
+validation_split &lt;- validation_split %&gt;% anti_join(test_split,by=&quot;Client_ID&quot;)
+str(train_split)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 </div>
 <div id="model-fitting" class="section level2">
 <h2>Model fitting</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2xtX21vZGVsPC0gZ2xtKE5FWFRfTU9OVEhfREVGQVVMVCB+IC4sXG4gICAgICAgICAgICAgICAgICAgIGRhdGE9c3Vic2V0KHRyYWluX3NwbGl0LHNlbGVjdD0tYyhDbGllbnRfSUQpKSwgXG4gICAgICAgICAgICAgICAgICAgIGZhbWlseT1iaW5vbWlhbClcbmBgYCJ9 -->
+<pre class="r"><code>glm_model&lt;- glm(NEXT_MONTH_DEFAULT ~ .,
+                    data=subset(train_split,select=-c(Client_ID)), 
+                    family=binomial)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3VtbWFyeShnbG1fbW9kZWwpXG5gYGAifQ== -->
+<pre class="r"><code>summary(glm_model)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 </div>
 <div id="confusion-matrix" class="section level2">
 <h2>Confusion Matrix</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJlZGljdGlvbnMgPC0gcHJlZGljdChnbG1fbW9kZWwsc3Vic2V0KHRlc3Rfc3BsaXQsc2VsZWN0PS1jKENsaWVudF9JRCxORVhUX01PTlRIX0RFRkFVTFQpKSlcbnByZWRpY3Rpb25zIDwtIGlmZWxzZShwcmVkaWN0aW9ucyA+PSAwLjUsMSwwKVxuY20gPC0gQ3Jvc3NUYWJsZShwcmVkaWN0aW9ucyx0ZXN0X3NwbGl0JE5FWFRfTU9OVEhfREVGQVVMVClcbkYxX1Njb3JlKHByZWRpY3Rpb25zLHRlc3Rfc3BsaXQkTkVYVF9NT05USF9ERUZBVUxUKVxuY21cbmBgYCJ9 -->
+<pre class="r"><code>predictions &lt;- predict(glm_model,subset(test_split,select=-c(Client_ID,NEXT_MONTH_DEFAULT)))
+predictions &lt;- ifelse(predictions &gt;= 0.5,1,0)
+cm &lt;- CrossTable(predictions,test_split$NEXT_MONTH_DEFAULT)
+F1_Score(predictions,test_split$NEXT_MONTH_DEFAULT)
+cm</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 </div>
-<div id="pca-analysis-and-visualization" class="section level2">
-<h2>PCA analysis and visualization</h2>
-</div>
-<div id="model-tuning" class="section level2">
-<h2>Model tuning</h2>
-</div>
-<div id="visualization" class="section level2">
-<h2>Visualization</h2>
+<div id="generating-submission" class="section level2">
+<h2>Generating submission</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGVzdF9wcmVkaWN0aW9ucyA8LSBwcmVkaWN0KGdsbV9tb2RlbCxzdWJzZXQodGVzdF9kZixzZWxlY3Q9LWMoQ2xpZW50X0lEKSkpXG5zdWJtaXNzaW9uJE5FWFRfTU9OVEhfREVGQVVMVCA8LSB0ZXN0X3ByZWRpY3Rpb25zXG5gYGAifQ== -->
+<pre class="r"><code>test_predictions &lt;- predict(glm_model,subset(test_df,select=-c(Client_ID)))
+submission$NEXT_MONTH_DEFAULT &lt;- test_predictions</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxud3JpdGUuY3N2KHN1Ym1pc3Npb24sXCJvdXRwdXQvc3ZtXzA1XzMwX1BNLmNzdlwiLHJvdy5uYW1lcyA9IEYpXG5gYGAifQ== -->
+<pre class="r"><code>write.csv(submission,&quot;output/svm_05_30_PM.csv&quot;,row.names = F)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 </div>
 <div id="final-remarks" class="section level2">
 <h2>Final Remarks</h2>
 <!-- rnb-text-end -->
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiUiBOb3RlYm9vayIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKIyMgTG9hZGluZyBEYXRhCiMjIFByZXByb2Nlc3NpbmcKIyMgRmVhdHVyZSBFbmdpbmVlcmluZwojIyBTcGxpdHRpbmcKIyMgTW9kZWwgZml0dGluZwojIyBDb25mdXNpb24gTWF0cml4CiMjIFBDQSBhbmFseXNpcyBhbmQgdmlzdWFsaXphdGlvbgojIyBNb2RlbCB0dW5pbmcKIyMgVmlzdWFsaXphdGlvbgojIyBGaW5hbCBSZW1hcmtz</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiUiBOb3RlYm9vayIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKYGBge3J9CmxpYnJhcnkodGlkeXZlcnNlKQpsaWJyYXJ5KGUxMDcxKQpsaWJyYXJ5KE1MbWV0cmljcykKYGBgCgojIyBMb2FkaW5nIERhdGEKYGBge3J9CnRyYWluX2RmIDwtIHJlYWQuY3N2KCIuLi9jcmVkaXRfY2FyZF9kZWZhdWx0X3RyYWluLmNzdiIpCnRlc3RfZGYgPC0gcmVhZC5jc3YoIi4uL2NyZWRpdF9jYXJkX2RlZmF1bHRfdGVzdC5jc3YiKQpzdWJtaXNzaW9uIDwtIGFzLmRhdGEuZnJhbWUodGVzdF9kZlssIkNsaWVudF9JRCJdKQpjb2xuYW1lcyhzdWJtaXNzaW9uKVsxXSA8LSAiQ2xpZW50X0lEIgpgYGAKIyMgUHJlcHJvY2Vzc2luZwpgYGB7cn0KdHJhaW5fZGYkTkVYVF9NT05USF9ERUZBVUxUIDwtIGFzLmZhY3Rvcihhcy5udW1lcmljKHRyYWluX2RmJE5FWFRfTU9OVEhfREVGQVVMVCkpCmZhY3Rvcl9wYXkgPC0gZnVuY3Rpb24oeCl7ZmFjdG9yKHgsbGV2ZWxzPXNlcSgtMiw5KSl9CiMgdHJhaW5fZGYgPC0gdHJhaW5fZGYgJT4lIG11dGF0ZV9hdChjKCJQQVlfSlVMWSIsIlBBWV9BVUciLCJQQVlfU0VQIiwKIyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIlBBWV9PQ1QiLCJQQVlfTk9WIiwiUEFZX0RFQyIpLGZhY3Rvcl9wYXkpCiMgbm9ybWFsaXplIDwtIGZ1bmN0aW9uKHgpeyh4IC0gbWVhbih4KS9zZCh4KSl9CnRyYWluX2RmIDwtIHRyYWluX2RmICU+JSBtdXRhdGVfYXQoYygiRFVFX0FNVF9KVUxZIiwiRFVFX0FNVF9BVUciLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIkRVRV9BTVRfU0VQIiwiRFVFX0FNVF9PQ1QiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIkRVRV9BTVRfTk9WIiwiRFVFX0FNVF9ERUMiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIlBBSURfQU1UX0pVTFkiLCJQQUlEX0FNVF9BVUciLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIlBBSURfQU1UX1NFUCIsIlBBSURfQU1UX09DVCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiUEFJRF9BTVRfTk9WIiwiUEFJRF9BTVRfREVDIiksc2NhbGUpCmJsdiA8LSB0cmFpbl9kZiU+JSAKICBtdXRhdGUoQmFsYW5jZV9MaW1pdF9WMT10cmltd3MoQmFsYW5jZV9MaW1pdF9WMSkpICU+JSAKICBzdWJzZXQoc2VsZWN0PUJhbGFuY2VfTGltaXRfVjEpCnRyYWluX2RmJEJhbGFuY2VfTGltaXRfVjEgPC0gZmFjdG9yKGFzLmZhY3RvcihibHYkQmFsYW5jZV9MaW1pdF9WMSksCiAgICAgICAgICAgICAgICAgICAgICAgICAgbGV2ZWxzPWMoIjEwMEsiLCIyMDBLIiwiMzAwSyIsIjQwMEsiLCI1MDBLIiwiMU0iLCIxLjVNIiwiMi41TSIpKQpgYGAKCmBgYHtyLGVjaG89RkFMU0V9CiMgdGVzdF9kZiA8LSB0ZXN0X2RmICU+JSBtdXRhdGVfYXQoYygiUEFZX0pVTFkiLCJQQVlfQVVHIiwiUEFZX1NFUCIsCiMgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJQQVlfT0NUIiwiUEFZX05PViIsIlBBWV9ERUMiKSxmYWN0b3JfcGF5KQp0ZXN0X2RmIDwtIHRlc3RfZGYgJT4lIG11dGF0ZV9hdChjKCJEVUVfQU1UX0pVTFkiLCJEVUVfQU1UX0FVRyIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIkRVRV9BTVRfU0VQIiwiRFVFX0FNVF9PQ1QiLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJEVUVfQU1UX05PViIsIkRVRV9BTVRfREVDIiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAiUEFJRF9BTVRfSlVMWSIsIlBBSURfQU1UX0FVRyIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIlBBSURfQU1UX1NFUCIsIlBBSURfQU1UX09DVCIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIlBBSURfQU1UX05PViIsIlBBSURfQU1UX0RFQyIpLHNjYWxlKQpibHYgPC0gdGVzdF9kZiU+JSAKICBtdXRhdGUoQmFsYW5jZV9MaW1pdF9WMT10cmltd3MoQmFsYW5jZV9MaW1pdF9WMSkpICU+JSAKICBzdWJzZXQoc2VsZWN0PUJhbGFuY2VfTGltaXRfVjEpCnRlc3RfZGYkQmFsYW5jZV9MaW1pdF9WMSA8LSBmYWN0b3IoYXMuZmFjdG9yKGJsdiRCYWxhbmNlX0xpbWl0X1YxKSwKICAgICAgICAgICAgICAgICAgICAgICAgICBsZXZlbHM9YygiMTAwSyIsIjIwMEsiLCIzMDBLIiwiNDAwSyIsIjUwMEsiLCIxTSIsIjEuNU0iLCIyLjVNIikpCmBgYApgYGB7cn0KbnJvdyh0ZXN0X2RmKQpgYGAKIyMgRmVhdHVyZSBFbmdpbmVlcmluZwpgYGB7cn0KIyB0cmFpbl9kZiRiYWxhbmNlX2p1bHkgPC0gdHJhaW5fZGYkRFVFX0FNVF9KVUxZIC0gdHJhaW5fZGYkUEFJRF9BTVRfSlVMWQojIHRyYWluX2RmJGJhbGFuY2VfYXVnIDwtIHRyYWluX2RmJERVRV9BTVRfQVVHIC0gdHJhaW5fZGYkUEFJRF9BTVRfQVVHCiMgdHJhaW5fZGYkYmFsYW5jZV9zZXAgPC0gdHJhaW5fZGYkRFVFX0FNVF9TRVAgLSB0cmFpbl9kZiRQQUlEX0FNVF9TRVAKIyB0cmFpbl9kZiRiYWxhbmNlX29jdCA8LSB0cmFpbl9kZiREVUVfQU1UX09DVCAtIHRyYWluX2RmJFBBSURfQU1UX09DVAojIHRyYWluX2RmJGJhbGFuY2Vfbm92IDwtIHRyYWluX2RmJERVRV9BTVRfTk9WIC0gdHJhaW5fZGYkUEFJRF9BTVRfTk9WCiMgdHJhaW5fZGYkYmFsYW5jZV9kZWMgPC0gdHJhaW5fZGYkRFVFX0FNVF9ERUMgLSB0cmFpbl9kZiRQQUlEX0FNVF9ERUMKCnRyYWluX2RmIDwtIHRyYWluX2RmICU+JSBtdXRhdGUoCiAgQmFsYW5jZV9MaW1pdF9WMSA9IGNhc2Vfd2hlbigKICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gIjEwMEsiIH4gMTAwLAogICAgQmFsYW5jZV9MaW1pdF9WMSA9PSAiMjAwSyIgfiAyMDAsCiAgICBCYWxhbmNlX0xpbWl0X1YxID09ICIzMDBLIiB+IDMwMCwKICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gIjQwMEsiIH4gNDAwLAogICAgQmFsYW5jZV9MaW1pdF9WMSA9PSAiNTAwSyIgfiA1MDAsCiAgICBCYWxhbmNlX0xpbWl0X1YxID09ICIxTSIgfiAxMDAwLAogICAgQmFsYW5jZV9MaW1pdF9WMSA9PSAiMS41TSIgfiAxNTAwLAogICAgQmFsYW5jZV9MaW1pdF9WMSA9PSAiMk0iIH4gMjAwMCwKICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gIjIuNU0iIH4gMjUwMAogICkpICU+JSAKICBzdWJzZXQoc2VsZWN0PS1jKEdlbmRlcixNQVJJVEFMX1NUQVRVUykpICU+JQogIG11dGF0ZShFRFVDQVRJT05fU1RBVFVTID0gYXMubnVtZXJpYyhFRFVDQVRJT05fU1RBVFVTKSwKICAgICAgICAgQUdFID0gYXMubnVtZXJpYyhBR0UpKQojICU+JQojICAgbXV0YXRlKAojICAgICBEdWVfQ3JlZGl0X0xpbV9KVUxZPShEVUVfQU1UX0pVTFkvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIER1ZV9DcmVkaXRfTGltX0FVRz0oRFVFX0FNVF9BVUcvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIER1ZV9DcmVkaXRfTGltX1NFUD0oRFVFX0FNVF9TRVAvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIER1ZV9DcmVkaXRfTGltX09DVD0oRFVFX0FNVF9PQ1QvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIER1ZV9DcmVkaXRfTGltX05PVj0oRFVFX0FNVF9OT1YvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIER1ZV9DcmVkaXRfTGltX0RFQz0oRFVFX0FNVF9ERUMvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAKIyAgICkKIyAlPiUKIyAgIG11dGF0ZSgKIyAgICAgYmFsYW5jZV9DcmVkaXRfTGltX0pVTFk9KGJhbGFuY2VfanVseS9CYWxhbmNlX0xpbWl0X1YxKSAqIDEwMCwKIyAgICAgYmFsYW5jZV9DcmVkaXRfTGltX0FVRz0oYmFsYW5jZV9hdWcvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIGJhbGFuY2VfQ3JlZGl0X0xpbV9TRVA9KGJhbGFuY2Vfc2VwL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLAojICAgICBiYWxhbmNlX0NyZWRpdF9MaW1fT0NUPShiYWxhbmNlX29jdC9CYWxhbmNlX0xpbWl0X1YxKSAqIDEwMCwKIyAgICAgYmFsYW5jZV9DcmVkaXRfTGltX05PVj0oYmFsYW5jZV9ub3YvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIGJhbGFuY2VfQ3JlZGl0X0xpbV9ERUM9KGJhbGFuY2VfZGVjL0JhbGFuY2VfTGltaXRfVjEpICogMTAwCiMgICApCmBgYApgYGB7cixlY2hvPUZBTFNFfQojIHRlc3RfZGYkYmFsYW5jZV9qdWx5IDwtIHRlc3RfZGYkRFVFX0FNVF9KVUxZIC0gdGVzdF9kZiRQQUlEX0FNVF9KVUxZCiMgdGVzdF9kZiRiYWxhbmNlX2F1ZyA8LSB0ZXN0X2RmJERVRV9BTVRfQVVHIC0gdGVzdF9kZiRQQUlEX0FNVF9BVUcKIyB0ZXN0X2RmJGJhbGFuY2Vfc2VwIDwtIHRlc3RfZGYkRFVFX0FNVF9TRVAgLSB0ZXN0X2RmJFBBSURfQU1UX1NFUAojIHRlc3RfZGYkYmFsYW5jZV9vY3QgPC0gdGVzdF9kZiREVUVfQU1UX09DVCAtIHRlc3RfZGYkUEFJRF9BTVRfT0NUCiMgdGVzdF9kZiRiYWxhbmNlX25vdiA8LSB0ZXN0X2RmJERVRV9BTVRfTk9WIC0gdGVzdF9kZiRQQUlEX0FNVF9OT1YKIyB0ZXN0X2RmJGJhbGFuY2VfZGVjIDwtIHRlc3RfZGYkRFVFX0FNVF9ERUMgLSB0ZXN0X2RmJFBBSURfQU1UX0RFQwoKdGVzdF9kZiA8LSB0ZXN0X2RmICU+JSBtdXRhdGUoCiAgQmFsYW5jZV9MaW1pdF9WMSA9IGNhc2Vfd2hlbigKICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gIjEwMEsiIH4gMTAwLAogICAgQmFsYW5jZV9MaW1pdF9WMSA9PSAiMjAwSyIgfiAyMDAsCiAgICBCYWxhbmNlX0xpbWl0X1YxID09ICIzMDBLIiB+IDMwMCwKICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gIjQwMEsiIH4gNDAwLAogICAgQmFsYW5jZV9MaW1pdF9WMSA9PSAiNTAwSyIgfiA1MDAsCiAgICBCYWxhbmNlX0xpbWl0X1YxID09ICIxTSIgfiAxMDAwLAogICAgQmFsYW5jZV9MaW1pdF9WMSA9PSAiMS41TSIgfiAxNTAwLAogICAgQmFsYW5jZV9MaW1pdF9WMSA9PSAiMk0iIH4gMjAwMCwKICAgIEJhbGFuY2VfTGltaXRfVjEgPT0gIjIuNU0iIH4gMjUwMAogICkpICU+JSAKICBzdWJzZXQoc2VsZWN0PS1jKEdlbmRlcixNQVJJVEFMX1NUQVRVUykpICU+JQogIG11dGF0ZShFRFVDQVRJT05fU1RBVFVTID0gYXMubnVtZXJpYyhFRFVDQVRJT05fU1RBVFVTKSwKICAgICAgICAgQUdFID0gYXMubnVtZXJpYyhBR0UpKSAKIyAlPiUKIyAgIG11dGF0ZSgKIyAgICAgRHVlX0NyZWRpdF9MaW1fSlVMWT0oRFVFX0FNVF9KVUxZL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLAojICAgICBEdWVfQ3JlZGl0X0xpbV9BVUc9KERVRV9BTVRfQVVHL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLAojICAgICBEdWVfQ3JlZGl0X0xpbV9TRVA9KERVRV9BTVRfU0VQL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLAojICAgICBEdWVfQ3JlZGl0X0xpbV9PQ1Q9KERVRV9BTVRfT0NUL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLAojICAgICBEdWVfQ3JlZGl0X0xpbV9OT1Y9KERVRV9BTVRfTk9WL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLAojICAgICBEdWVfQ3JlZGl0X0xpbV9ERUM9KERVRV9BTVRfREVDL0JhbGFuY2VfTGltaXRfVjEpICogMTAwCiMgICApCiMgJT4lCiMgICBtdXRhdGUoCiMgICAgIGJhbGFuY2VfQ3JlZGl0X0xpbV9KVUxZPShiYWxhbmNlX2p1bHkvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIGJhbGFuY2VfQ3JlZGl0X0xpbV9BVUc9KGJhbGFuY2VfYXVnL0JhbGFuY2VfTGltaXRfVjEpICogMTAwLAojICAgICBiYWxhbmNlX0NyZWRpdF9MaW1fU0VQPShiYWxhbmNlX3NlcC9CYWxhbmNlX0xpbWl0X1YxKSAqIDEwMCwKIyAgICAgYmFsYW5jZV9DcmVkaXRfTGltX09DVD0oYmFsYW5jZV9vY3QvQmFsYW5jZV9MaW1pdF9WMSkgKiAxMDAsCiMgICAgIGJhbGFuY2VfQ3JlZGl0X0xpbV9OT1Y9KGJhbGFuY2Vfbm92L0JhbGFuY2VfTGltaXRfVjEpICogMTAwLAojICAgICBiYWxhbmNlX0NyZWRpdF9MaW1fREVDPShiYWxhbmNlX2RlYy9CYWxhbmNlX0xpbWl0X1YxKSAqIDEwMAojICAgKQpgYGAKYGBge3J9CnRyYWluX2RmW3Jvd1N1bXMoaXMubmEodHJhaW5fZGYpKT4wLF0KYGBgCmBgYHtyfQp0ZXN0X2RmW3Jvd1N1bXMoaXMubmEodGVzdF9kZikpPjAsXQpgYGAKYGBge3J9Cm5yb3codGVzdF9kZikKYGBgCiMjIFNwbGl0dGluZwpgYGB7cn0KdHJhaW5fc3BsaXQgPC0gdHJhaW5fZGYgJT4lIHNhbXBsZV9mcmFjKDAuNjUpCnZhbGlkYXRpb25fc3BsaXQgPC0gdHJhaW5fZGYgJT4lIGFudGlfam9pbih0cmFpbl9zcGxpdCxieT0iQ2xpZW50X0lEIikKdGVzdF9zcGxpdCA8LSB2YWxpZGF0aW9uX3NwbGl0ICU+JSBzYW1wbGVfZnJhYygwLjUpCnZhbGlkYXRpb25fc3BsaXQgPC0gdmFsaWRhdGlvbl9zcGxpdCAlPiUgYW50aV9qb2luKHRlc3Rfc3BsaXQsYnk9IkNsaWVudF9JRCIpCnN0cih0cmFpbl9zcGxpdCkKYGBgCiMjIE1vZGVsIGZpdHRpbmcKCmBgYHtyfQpnbG1fbW9kZWw8LSBnbG0oTkVYVF9NT05USF9ERUZBVUxUIH4gLiwKICAgICAgICAgICAgICAgICAgICBkYXRhPXN1YnNldCh0cmFpbl9zcGxpdCxzZWxlY3Q9LWMoQ2xpZW50X0lEKSksIAogICAgICAgICAgICAgICAgICAgIGZhbWlseT1iaW5vbWlhbCkKYGBgCgpgYGB7cn0Kc3VtbWFyeShnbG1fbW9kZWwpCmBgYAoKIyMgQ29uZnVzaW9uIE1hdHJpeApgYGB7cn0KcHJlZGljdGlvbnMgPC0gcHJlZGljdChnbG1fbW9kZWwsc3Vic2V0KHRlc3Rfc3BsaXQsc2VsZWN0PS1jKENsaWVudF9JRCxORVhUX01PTlRIX0RFRkFVTFQpKSkKcHJlZGljdGlvbnMgPC0gaWZlbHNlKHByZWRpY3Rpb25zID49IDAuNSwxLDApCmNtIDwtIENyb3NzVGFibGUocHJlZGljdGlvbnMsdGVzdF9zcGxpdCRORVhUX01PTlRIX0RFRkFVTFQpCkYxX1Njb3JlKHByZWRpY3Rpb25zLHRlc3Rfc3BsaXQkTkVYVF9NT05USF9ERUZBVUxUKQpjbQpgYGAKIyMgR2VuZXJhdGluZyBzdWJtaXNzaW9uCmBgYHtyfQp0ZXN0X3ByZWRpY3Rpb25zIDwtIHByZWRpY3QoZ2xtX21vZGVsLHN1YnNldCh0ZXN0X2RmLHNlbGVjdD0tYyhDbGllbnRfSUQpKSkKc3VibWlzc2lvbiRORVhUX01PTlRIX0RFRkFVTFQgPC0gdGVzdF9wcmVkaWN0aW9ucwpgYGAKYGBge3J9CndyaXRlLmNzdihzdWJtaXNzaW9uLCJvdXRwdXQvc3ZtXzA1XzMwX1BNLmNzdiIscm93Lm5hbWVzID0gRikKYGBgCiMjIEZpbmFsIFJlbWFya3MK</div>
 
 
 
@@ -1828,7 +1986,7 @@ $(document).ready(function () {
 <!-- code folding -->
 <script>
 $(document).ready(function () {
-  window.initializeSourceEmbed("1-XGboost.Rmd");
+  window.initializeSourceEmbed("1-xgboost.Rmd");
   window.initializeCodeFolding("show" === "show");
 });
 </script>

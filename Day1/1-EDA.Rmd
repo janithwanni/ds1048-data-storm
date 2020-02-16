@@ -114,7 +114,8 @@ train_df <- train_df %>% mutate(
     Due_Credit_Lim_OCT=(DUE_AMT_OCT/Balance_Credit_Limit_Numeric) * 100,
     Due_Credit_Lim_NOV=(DUE_AMT_NOV/Balance_Credit_Limit_Numeric) * 100,
     Due_Credit_Lim_DEC=(DUE_AMT_DEC/Balance_Credit_Limit_Numeric) * 100
-  )
+  ) %>%
+  na.omit()
 ```
 
 ```{r}
