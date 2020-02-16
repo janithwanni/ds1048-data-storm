@@ -1,0 +1,15 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Loading Data
+## Preprocessing
+## Feature Engineering
+## Splitting
+## Model fitting
+## Confusion Matrix
+## PCA analysis and visualization
+## Model tuning
+## Visualization
+## Final Remarks

@@ -38,3 +38,66 @@ ggplot(data=train_df%>%
   geom_bar(position="dodge", stat="identity")+
   facet_grid(pay_key ~ .) + theme_minimal()
 ```
+
+
+Considering the balance of months
+
+```{r}
+train_df$balance_july <- train_df$DUE_AMT_JULY - train_df$PAID_AMT_JULY
+train_df$balance_aug <- train_df$DUE_AMT_AUG - train_df$PAID_AMT_AUG
+train_df$balance_sep <- train_df$DUE_AMT_SEP - train_df$PAID_AMT_SEP
+train_df$balance_oct <- train_df$DUE_AMT_OCT - train_df$PAID_AMT_OCT
+train_df$balance_nov <- train_df$DUE_AMT_NOV - train_df$PAID_AMT_NOV
+train_df$balance_dec <- train_df$DUE_AMT_DEC - train_df$PAID_AMT_DEC
+
+ggplot(data=gather(train_df,key,value,c("balance_july","balance_aug",
+                                        "balance_sep","balance_oct",
+                                        "balance_nov","balance_dec")) %>%
+         mutate(key = factor(key,levels =c("balance_july","balance_aug",
+                                        "balance_sep","balance_oct",
+                                        "balance_nov","balance_dec"))),
+       aes(x = key,y = value))+
+  geom_boxplot(aes(fill=NEXT_MONTH_DEFAULT))+theme_minimal()
+```
+
+Balance as a percentage of credit limit
+
+```{r}
+train_df <- train_df %>% mutate(
+  Balance_Credit_Limit_Numeric = case_when(
+    Balance_Limit_V1 == "100K" ~ 100000,
+    Balance_Limit_V1 == "200K" ~ 200000,
+    Balance_Limit_V1 == "300K" ~ 300000,
+    Balance_Limit_V1 == "400K" ~ 400000,
+    Balance_Limit_V1 == "500K" ~ 500000,
+    Balance_Limit_V1 == "1M" ~ 1000000,
+    Balance_Limit_V1 == "1.5M" ~ 1500000,
+    Balance_Limit_V1 == "2M" ~ 2000000,
+    Balance_Limit_V1 == "2.5M" ~ 2500000
+  )
+) %>%
+  mutate(
+    balance_Credit_Lim_JULY=(balance_july/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_AUG=(balance_aug/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_SEP=(balance_sep/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_OCT=(balance_oct/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_NOV=(balance_nov/Balance_Credit_Limit_Numeric) * 100,
+    balance_Credit_Lim_DEC=(balance_dec/Balance_Credit_Limit_Numeric) * 100
+  ) %>%
+  na.omit()
+```
+
+Plotting
+
+```{r}
+ggplot(data=gather(train_df,key,value,c("balance_Credit_Lim_JULY","balance_Credit_Lim_AUG",
+                                        "balance_Credit_Lim_SEP","balance_Credit_Lim_OCT",
+                                        "balance_Credit_Lim_NOV","balance_Credit_Lim_DEC")) %>%
+         mutate(key = factor(key,levels=c("balance_Credit_Lim_JULY","balance_Credit_Lim_AUG",
+                                        "balance_Credit_Lim_SEP","balance_Credit_Lim_OCT",
+                                        "balance_Credit_Lim_NOV","balance_Credit_Lim_DEC"))),
+       aes(x=key,y=value))+
+  geom_boxplot(aes(fill=NEXT_MONTH_DEFAULT))+
+  coord_cartesian(ylim=c(0,200))+
+  scale_x_discrete(labels=c("JULY","AUG","SEP","OCT","NOV","DEC"))
+```

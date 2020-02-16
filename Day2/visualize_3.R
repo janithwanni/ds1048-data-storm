@@ -1,4 +1,4 @@
-train <- read.csv(file = 'F:/datastorm/credit_card_default_train.csv/credit_card_default_train.csv',header = TRUE)
+train <- read.csv(file = './credit_card_default_train.csv',header = TRUE)
 
 dim(train)
 train = na.omit(train)
@@ -44,7 +44,12 @@ ggplot(new03, aes(x = new2.NO_MONTHS_PAY, y = new2.PAY_MONTH, fill = new2.NEXT_M
   theme_ridges()
 
 #Analysis of the percetage of credit limit vs due amount.
-
+train <- subset.data.frame(train,train$DUE_AMT_JULY > 0&train$DUE_AMT_AUG > 0&
+                             train$DUE_AMT_SEP > 0&train$DUE_AMT_OCT > 0&
+                             train$DUE_AMT_NOV > 0&train$DUE_AMT_DEC > 0&
+                             train$PAID_AMT_JULY> 0&train$PAID_AMT_AUG>0&
+                             train$PAID_AMT_SEP> 0&train$PAID_AMT_OCT>0&
+                             train$PAID_AMT_NOV> 0&train$PAID_AMT_DEC>0)
 train$duepaid_JULY <- train$PAID_AMT_JULY/train$DUE_AMT_JULY
 train$duepaid_AUG <-  train$PAID_AMT_AUG/train$DUE_AMT_AUG
 train$duepaid_SEP <-  train$PAID_AMT_SEP/train$DUE_AMT_SEP
@@ -52,13 +57,29 @@ train$duepaid_OCT <-  train$PAID_AMT_OCT/train$DUE_AMT_OCT
 train$duepaid_NOV <-  train$PAID_AMT_NOV/train$DUE_AMT_NOV
 train$duepaid_DEC <-  train$PAID_AMT_DEC/train$DUE_AMT_DEC
 
-new04 <- data.frame(train$duepaid_NOV,train$duepaid_OCT,train$duepaid_SEP,train$duepaid_AUG,train$duepaid_JULY,train$duepaid_DEC,train$NEXT_MONTH_DEFAULT)
+train$duepaid_JULY[is.nan(train$duepaid_JULY)] <- 0
+train$duepaid_AUG[is.nan(train$duepaid_AUG)] <- 0
+train$duepaid_SEP[is.nan(train$duepaid_SEP)] <- 0
+train$duepaid_OCT[is.nan(train$duepaid_OCT)] <- 0
+train$duepaid_NOV[is.nan(train$duepaid_NOV)] <- 0
+train$duepaid_DEC[is.nan(train$duepaid_DEC)] <- 0
+
+new04 <- data.frame(train$duepaid_NOV,train$duepaid_OCT,
+                    train$duepaid_SEP,train$duepaid_AUG,
+                    train$duepaid_JULY,train$duepaid_DEC,
+                    as.factor(train$NEXT_MONTH_DEFAULT))
 new05 <- new04 %>%
-  gather(train.duepaid_DEC,train.duepaid_NOV,train.duepaid_OCT,train.duepaid_SEP,train.duepaid_AUG,train.duepaid_JULY, key = "month_paid_due",value = "ratio")
+  gather(train.duepaid_DEC,train.duepaid_NOV,
+         train.duepaid_OCT,train.duepaid_SEP,
+         train.duepaid_AUG,train.duepaid_JULY, key = "month_paid_due",value = "ratio")
 
 new06 <- na.omit(new05)
-new06$month_paid_due <- factor(new06$month_paid_due,levels=c("train.duepaid_JULY","train.duepaid_AUG","train.duepaid_SEP","train.duepaid_OCT","train.duepaid_NOV","train.duepaid_DEC"))
-
-ggplot(new06, aes(x = month_paid_due , y = ratio , fill = train.NEXT_MONTH_DEFAULT)) + 
-  geom_boxplot()
+new06$month_paid_due <- factor(new06$month_paid_due,
+                               levels=c("train.duepaid_JULY","train.duepaid_AUG",
+                                        "train.duepaid_SEP","train.duepaid_OCT",
+                                        "train.duepaid_NOV","train.duepaid_DEC"))
+colnames(new06)[1] <- "response"
+ggplot(new06, aes(x = month_paid_due , y = ratio)) + 
+  geom_boxplot(aes(fill=response))+
+  coord_cartesian(ylim=c(0,1))+theme_minimal()
 
